@@ -18,5 +18,6 @@ export {
   type Role,
   type SendInput,
 } from './channel.js'
+export { draft, sendDiff } from './draft.js'
 export { init, type InitOptions, type InitTarget } from './init.js'
 export { listen, type ListenOptions } from './listen.js'

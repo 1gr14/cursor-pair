@@ -6,12 +6,14 @@ import path from 'node:path'
 import {
   changes,
   createChannel,
+  draft,
   init,
   isChannel,
   listen,
   readNew,
   resetBaseline,
   send,
+  sendDiff,
   status,
   type Message,
   type Role,
@@ -164,6 +166,49 @@ describe('changes', () => {
   it('throws outside a git repository', () => {
     const channel = createChannel(makeProject())
     expect(() => changes(channel, 'external')).toThrow('git repository')
+  })
+})
+
+describe('draft / sendDiff', () => {
+  it('drafts a copy, sends one normalized diff, clears drafts, leaves the real file alone', () => {
+    const dir = makeProject()
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'one\ntwo\n')
+    const channel = createChannel(dir)
+    const [copy] = draft(channel, ['a.txt'])
+    fs.writeFileSync(copy, 'one\nTWO\n')
+    const message = sendDiff(channel, 'external')
+    expect(message.type).toBe('diff')
+    expect(message.patch).toContain('--- a/a.txt')
+    expect(message.patch).toContain('+++ b/a.txt')
+    expect(message.patch).toContain('+TWO')
+    expect(fs.existsSync(path.join(channel, 'draft'))).toBe(false) // cleared
+    expect(fs.readFileSync(path.join(dir, 'a.txt'), 'utf8')).toBe('one\ntwo\n') // untouched
+    const [received] = readNew(channel, 'cursor')
+    expect(received.patch).toBe(message.patch)
+  })
+
+  it('bundles several drafts, including a brand-new file, into one message', () => {
+    const dir = makeProject()
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'hi\n')
+    const channel = createChannel(dir)
+    const [aCopy, bCopy] = draft(channel, ['a.txt', 'src/b.txt'])
+    fs.writeFileSync(aCopy, 'hi there\n')
+    fs.writeFileSync(bCopy, 'brand new\n')
+    const message = sendDiff(channel, 'external')
+    expect(message.patch).toContain('+hi there')
+    expect(message.patch).toContain('--- /dev/null')
+    expect(message.patch).toContain('+++ b/src/b.txt')
+    expect(message.patch).toContain('+brand new')
+  })
+
+  it('refuses paths outside the project, empty drafts, and unchanged drafts', () => {
+    const dir = makeProject()
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'same\n')
+    const channel = createChannel(dir)
+    expect(() => draft(channel, ['../evil.txt'])).toThrow('outside the project')
+    expect(() => sendDiff(channel, 'external')).toThrow('no drafts')
+    draft(channel, ['a.txt'])
+    expect(() => sendDiff(channel, 'external')).toThrow('nothing to send')
   })
 })
 

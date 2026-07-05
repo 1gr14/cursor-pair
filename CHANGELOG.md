@@ -6,6 +6,7 @@ work; `bun run release` promotes that section to the new version.
 ## Unreleased
 
 - Initial release: file-mailbox channel (`new`, `send`, `listen`, `status`),
-  read-once `changes` (one merged git-snapshot diff per role), library API,
-  and `init` for the Claude Code skill (`/cursor`), the Cursor command
-  (`/pair`), and a Codex AGENTS.md snippet.
+  read-once `changes` (one merged git-snapshot diff per role), the draft flow
+  (`draft` + `send-diff` — the agent edits copies, the CLI computes the
+  diff), library API, and `init` for the Claude Code skill (`/cursor`), the
+  Cursor command (`/pair`), and a Codex AGENTS.md snippet.

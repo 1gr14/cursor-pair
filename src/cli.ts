@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util'
 import { codexSnippet } from './assets.js'
 import { changes, resetBaseline } from './changes.js'
 import { createChannel, ROLES, send, status, type MessageType, type Role, type SendInput } from './channel.js'
+import { draft, sendDiff } from './draft.js'
 import { init, type InitTarget } from './init.js'
 import { listen } from './listen.js'
 
@@ -18,6 +19,11 @@ Usage:
   cursor-pair changes <channel> --as <role> [--keep]
                                                everything that changed on disk since
                                                this role last looked (read-once)
+  cursor-pair draft <channel> <file...>        copy files into the channel's draft dir —
+                                               edit the copies, not the real files
+  cursor-pair send-diff <channel> [--as external]
+                                               diff all drafts vs the project, send as
+                                               ONE diff message, clear the drafts
   cursor-pair status <channel>                 message counts per side
   cursor-pair init <claude|cursor|codex> [--global]
                                                install the prompt files
@@ -142,6 +148,26 @@ const runChanges = (args: string[]): number => {
   return 0
 }
 
+const runDraft = (args: string[]): number => {
+  const { positionals } = parseArgs({ args, allowPositionals: true, options: {} })
+  const channel = positionals.at(0) ?? fail('draft needs a channel path')
+  for (const copy of draft(channel, positionals.slice(1))) console.log(copy)
+  console.error(`edit the draft copies, then run: cursor-pair send-diff ${channel}`)
+  return 0
+}
+
+const runSendDiff = (args: string[]): number => {
+  const { positionals, values } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: { as: { type: 'string' } },
+  })
+  const channel = positionals.at(0) ?? fail('send-diff needs a channel path')
+  const from = values.as === undefined ? 'external' : parseRole(values.as)
+  console.log(JSON.stringify(sendDiff(channel, from)))
+  return 0
+}
+
 const runStatus = (args: string[]): number => {
   const { positionals } = parseArgs({ args, allowPositionals: true, options: {} })
   const channel = positionals[0] ?? fail('status needs a channel path')
@@ -185,6 +211,10 @@ const main = async (): Promise<number> => {
         return await runListen(rest)
       case 'changes':
         return runChanges(rest)
+      case 'draft':
+        return runDraft(rest)
+      case 'send-diff':
+        return runSendDiff(rest)
       case 'status':
         return runStatus(rest)
       case 'init':

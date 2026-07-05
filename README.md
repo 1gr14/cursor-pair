@@ -16,11 +16,16 @@ queue: you read it, you don't commit yet. The problem: every new request mutates
 that one big diff, so you can't tell what the _last_ step changed without
 re-reading everything.
 
-cursor-pair gives the two agents a private local channel. The CLI agent stops
-editing files itself: it sends each edit as a diff, and your Cursor agent
-applies it with its own edit tools. Every step shows up in Cursor as a normal
-agent edit — you accept or decline it hunk by hunk. Chat flows both ways, so you
-can talk to your CLI agent without leaving Cursor.
+The obvious workaround — `git add` what you already reviewed — trades one view
+for the other: staged-vs-unstaged shows you the earlier changes or the newest
+step, never both at once.
+
+cursor-pair keeps both. It gives the two agents a private local channel: the CLI
+agent stops editing files itself and sends each edit as a diff, and your Cursor
+agent applies it with its own edit tools. Every step shows up in Cursor as a
+normal agent edit — you accept or decline it hunk by hunk — while the whole
+uncommitted diff stays in place. Chat flows both ways, so you can talk to your
+CLI agent without leaving Cursor.
 
 The channel is a folder on your disk. No server, no network, nothing leaves your
 machine.
@@ -60,15 +65,20 @@ cursor-pair init codex  # prints a snippet for AGENTS.md
    the channel; Cursor applies each one with its own edit tools and confirms
    with an `ack` (or an `error` saying why not). You review every step in Cursor
    as usual.
-4. Type into either chat. Messages you write in Cursor are forwarded to the CLI
-   agent by default — it is the one doing the thinking; the Cursor side stays on
-   a fast, cheap model and just applies.
+4. Type into either chat. In Cursor the agent is usually inside a `listen`, so
+   send your message with ⌘⏎ (Ctrl+Enter on Windows/Linux) — "send immediately":
+   Cursor interrupts the listen, the agent forwards your message to the CLI
+   agent and goes right back to listening. A plain Enter queues the message
+   until the current listen step ends instead (Cursor Settings → Chat → Queue
+   messages picks the default). The CLI agent does the thinking; the Cursor side
+   stays on a fast, cheap model and just applies.
 
 Escape hatch, same on both sides: start a message with `..` and that agent
 handles it itself instead of going through the channel — `..+` turns that mode
 on for everything, `..-` turns it back off. Plain words work too — "do it
 yourself" always wins. (Why not `!`? In Claude Code `!` opens bash mode, the
-message would never reach the agent.)
+message would never reach the agent.) To end a session, tell either agent to
+stop pairing (e.g. `..stop` in Cursor).
 
 ## Changes are pulled, not pushed
 
@@ -102,6 +112,7 @@ repository.
   external.offset
   external.baseline  # each role's "last seen" tree for `changes`
   cursor.baseline
+  draft/             # the CLI agent's working copies (cleared by send-diff)
 ```
 
 One writer and one reader per file, byte offsets instead of re-reading, and the
@@ -128,6 +139,8 @@ cursor-pair send <channel> --as <role> [--type chat|diff|ack|error]
                 [--text "..."] [--patch-file file|-] [--ref N]
 cursor-pair listen <channel> --as <role> [--timeout 480] [--heartbeat 30]
 cursor-pair changes <channel> --as <role> [--keep]
+cursor-pair draft <channel> <file...>    # copy files into the channel's draft dir
+cursor-pair send-diff <channel> [--as external] # diff drafts vs project → one diff message
 cursor-pair status <channel>             # message counts per side
 cursor-pair init <claude|cursor|codex> [--global]
 ```
@@ -137,20 +150,23 @@ until a message arrives, prints it as JSONL and exits 0; on timeout it exits 2.
 Lines starting with `#` are heartbeats that keep IDE terminals from killing a
 "silent" process. `changes` is read-once; `--keep` peeks without consuming.
 
+`draft` + `send-diff` are how the CLI agent authors edits without writing diffs
+by hand: it edits draft copies with its normal edit tools, and `send-diff`
+computes one clean unified diff (machine-perfect hunks, paths normalized to
+`a/<file> b/<file>`), sends it, and clears the drafts. Drafting a path that does
+not exist creates a new file.
+
 ## Scope and notes
 
 - The IDE side is Cursor today because Cursor renders agent edits with an
   accept/decline review UI. The protocol itself is editor-agnostic — any agent
   that can run a CLI can take either role.
-- If you only need "what changed since I last looked", staging reviewed files
-  with `git add` gets you far. cursor-pair is for when you also want per-step
-  accept/decline and a two-way line to the CLI agent.
 - Not affiliated with Cursor (Anysphere) or Anthropic.
 
 ## Requirements
 
 - **Bun 1+** or **Node.js 20+** (ESM only)
-- **git** in the project — `changes` builds on git snapshots
+- **git** — `changes` and `send-diff` are built on it
 - **TypeScript 5+** (optional — works in plain JS too)
 
 <!-- docs:end -->
