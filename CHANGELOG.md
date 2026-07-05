@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.0 — 2026-07-05
+
 - Initial release: file-mailbox channel (`new`, `send`, `listen`, `status`),
   read-once `changes` (one merged git-snapshot diff per role), the draft flow
   (`draft` + `send-diff` — the agent edits copies, the CLI computes the

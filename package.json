@@ -1,6 +1,6 @@
 {
   "name": "cursor-pair",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A private local channel between a CLI agent (Claude Code, Codex) and your Cursor agent — edits arrive as native Cursor diffs you accept or decline.",
   "keywords": [
     "cursor",
