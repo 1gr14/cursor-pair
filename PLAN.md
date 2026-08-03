@@ -26,6 +26,19 @@ works and why; this file tracks only what is left.
 
 ## Later (v0.2 candidates)
 
+- [ ] **Agentless extension mode — the big v2 direction** (Sergei's idea,
+      2026-07-06). Drop the Cursor agent entirely: Claude edits files directly,
+      and our own VS Code/Cursor EXTENSION renders the review — diff every
+      change against the role baseline (the `changes` machinery, already built),
+      highlight hunks inline, per-hunk Accept (advance baseline) / Decline
+      (revert hunk). Verified: no other way in — the Cursor SDK is strictly
+      headless (zero editor-UI APIs), and there is no public command/deeplink to
+      feed an arbitrary diff into Cursor's native accept/decline UI. VS Code's
+      stable SCM API (`createSourceControl` + `quickDiffProvider`) gives gutter
+      markers and an inline diff peek against a custom baseline for free; the
+      accept/decline buttons are ours to build. Kills the listen loop, apply
+      fidelity risk, and all Cursor-side tokens; works in any VS Code fork.
+      Cost: the hunk UI itself, and the chat proxy needs its own input box.
 - [ ] File deletion and rename through the draft flow — today a draft can change
       or create a file, not remove one.
 - [ ] Push nudge: an optional watcher that drops a "disk changed" ping into the
